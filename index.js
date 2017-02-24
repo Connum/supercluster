@@ -265,7 +265,8 @@ function createCluster(x, y, id, numPoints, properties) {
 }
 
 function createPointCluster(p, id) {
-    var coords = p.geometry.coordinates;
+    var coords = p.geometry.type != 'Point' ? getCentroid(p) : p.geometry.coordinates;
+
     return {
         x: lngX(coords[0]), // projected point coordinates
         y: latY(coords[1]),
@@ -328,4 +329,40 @@ function getX(p) {
 }
 function getY(p) {
     return p.y;
+}
+
+function getCentroid(f) {
+    var g = f.geometry,
+        arr;
+
+    switch(g.type) {
+        case 'LineString':
+            arr = g.coordinates;
+            break;
+        case 'Polygon':
+            arr = g.coordinates[0];
+            break;
+        case 'Point':
+        default:
+            return f.geometry.coordinates
+            break;
+    }
+
+    var twoTimesSignedArea = 0;
+    var cxTimes6SignedArea = 0;
+    var cyTimes6SignedArea = 0;
+
+    var length = arr.length
+
+    var x = function (i) { return arr[i % length][0] };
+    var y = function (i) { return arr[i % length][1] };
+
+    for ( var i = 0; i < arr.length; i++) {
+        var twoSA = x(i)*y(i+1) - x(i+1)*y(i);
+        twoTimesSignedArea += twoSA;
+        cxTimes6SignedArea += (x(i) + x(i+1)) * twoSA;
+        cyTimes6SignedArea += (y(i) + y(i+1)) * twoSA;
+    }
+    var sixSignedArea = 3 * twoTimesSignedArea;
+    return [ cxTimes6SignedArea / sixSignedArea, cyTimes6SignedArea / sixSignedArea];        
 }
